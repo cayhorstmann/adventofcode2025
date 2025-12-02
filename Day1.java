@@ -42,4 +42,7 @@ void main() throws Exception {
     parse(inputPath("a"));
     time(this::part1);
     time(this::part2);
+    parse(inputPath("z"));
+    time(this::part1);
+    time(this::part2);
 }
