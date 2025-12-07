@@ -1,35 +1,12 @@
 import static com.horstmann.adventofcode.Util.*;
-import static java.lang.Math.*;
 
-import com.horstmann.adventofcode.Sets;
-
-record Range(long from, long to) {
-    static Range parse(String s) {
-        var ss = s.split("-");
-        return new Range(Long.parseLong(ss[0]), Long.parseLong(ss[1]));
-    }
-    boolean contains(long x) {
-        return from <= x && x <= to;
-    }
-    boolean overlaps(Range other) {
-        return max(from, other.from) <= min(to,  other.to); 
-    }
-    Range join(Range other) {
-        return new Range(min(from, other.from), max(to, other.to));
-    }
-    long length() {
-        return max(0, to - from + 1);
-    }
-    boolean isEmpty() {
-        return from > to;
-    }
-}
+import com.horstmann.adventofcode.*;
 
 Set<Range> ranges;
 Set<Long> ingredients;
 
 void parse(Path path) throws IOException {
-    ranges = new HashSet<>();
+    ranges = new TreeSet<>();
     ingredients = new HashSet<>();
     boolean first = true;
     for (String line : Files.readAllLines(path)) {
@@ -43,13 +20,17 @@ boolean isFresh(long x) {
     return ranges.stream().anyMatch(r -> r.contains(x));
 }
 
+Object part1() {
+    return ingredients.stream().filter(this::isFresh).count();
+}
+
 Set<Range> disjoint(Set<Range> ranges) {
     if (ranges.isEmpty()) return Set.of();
     Range first = ranges.iterator().next();
     Set<Range> disjointRest = disjoint(Sets.difference(ranges, Set.of(first)));
-    Set<Range> result = new HashSet<>();
+    Set<Range> result = new TreeSet<>();
     for (var r : disjointRest) {
-        if (first.overlaps(r)) 
+        if (first.touches(r)) 
             first = first.join(r);
         else 
             result.add(r);
@@ -58,13 +39,19 @@ Set<Range> disjoint(Set<Range> ranges) {
     return result;
 }
 
-Object part1() {
-    return ingredients.stream().filter(this::isFresh).count();
+Object part2Original() {
+    Set<Range> disjointRanges = disjoint(ranges);
+    return disjointRanges.stream().mapToLong(Range::size).sum();
 }
 
 Object part2() {
-    Set<Range> disjointRanges = disjoint(ranges);
-    return disjointRanges.stream().mapToLong(Range::length).sum();
+    long[] rangeUnion = {};
+    for (var r : ranges) 
+        rangeUnion = Intervals.union(rangeUnion, new long[] { r.from(), r.to() });
+    long result = 0;
+    for (int i = 0; i < rangeUnion.length; i += 2)
+        result += rangeUnion[i + 1] - rangeUnion[i] + 1;
+    return result;
 }
 
 void main() throws Exception {
