@@ -1,4 +1,3 @@
-import com.horstmann.adventofcode.*;
 import static com.horstmann.adventofcode.Util.*;
 
 List<List<Integer>> inputs;
