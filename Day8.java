@@ -28,9 +28,11 @@ void parse(Path path) throws IOException {
 List<Point3> closest() {
     long minDist = Long.MAX_VALUE;
     List<Point3> shortestPair = null;
-    for (var p : points) {
-        for (var q : points) {
-            if (!p.equals(q) && !connections.get(p).contains(q)) {
+    for (int i = 0; i < points.size(); i++) {
+        for (int j = i + 1; j < points.size(); j++) {
+            var p = points.get(i);
+            var q = points.get(j);
+            if (!connections.get(p).contains(q)) {
                 long dist = p.distanceSquared(q);
                 if (dist < minDist) {
                     shortestPair = List.of(p, q);
@@ -50,6 +52,7 @@ List<Point3> connect() {
 }
 
 Object part1() {
+    // This is slow for part 2, and I could speed it up with union-find, but it's not *that* slow
     for (int i = 0; i < iterations; i++) {
         connect();
     }
@@ -64,12 +67,18 @@ Object part1() {
 }
 
 Object part2() {
-    while (true) {
-        var cl = connect();
-        if (Graphs.connectedComponents(points, p -> connections.get(p)).size() == 1) {
-            return cl.get(0).x() * cl.get(1).x();            
+    // Compute weighted edges of complete graph
+    var edges = new PriorityQueue<Graphs.WeightedEdge<Point3>>();
+    for (int i = 0; i < points.size(); i++) {
+        for (int j = i + 1; j < points.size(); j++) {
+            var p = points.get(i);
+            var q = points.get(j);
+            edges.add(new Graphs.WeightedEdge<>(p, q, p.distanceSquared(q)));
         }
     }
+    var spanningTree = Graphs.kruskal(points, edges);
+    var last = spanningTree.last();
+    return last.from().x() * last.to().x();
 }
 
 void main() throws Exception {

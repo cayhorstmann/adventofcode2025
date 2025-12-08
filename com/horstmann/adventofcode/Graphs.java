@@ -1,25 +1,7 @@
 package com.horstmann.adventofcode;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Queue;
-import java.util.SequencedMap;
-import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.ToIntBiFunction;
+import module java.base;
+import java.util.NoSuchElementException;
 
 // TODO Bidirectional BFS https://zdimension.fr/everyone-gets-bidirectional-bfs-wrong/
 // TODO Clique finding https://en.wikipedia.org/wiki/Bron%E2%80%93Kerbosch_algorithm
@@ -349,7 +331,8 @@ public class Graphs {
      * @param neighbors yields the neighbors of a vertex
      * @return the connected components 
      */
-    public static <V> Set<Set<V>> connectedComponents(Collection<V> vertices, Function<V, Set<V>> neighbors) {
+    public static <V> Collection<Set<V>> connectedComponents(Collection<V> vertices, Function<V, Set<V>> neighbors) {
+        /*
         var visited = new ArrayList<V>();
         var components = new HashSet<Set<V>>();
         for (var v : vertices) {
@@ -360,6 +343,113 @@ public class Graphs {
             }   
         }
         return components;
+        */
+        var uf = new UnionFind<V>();
+        for (var v : vertices) uf.singleton(v);
+        for (var v : vertices) {
+            for (var w : neighbors.apply(v)) {
+                uf.unite(v, w);
+            }
+        }
+        return uf.sets();
+    }
+
+    public record WeightedEdge<V>(V from, V to, long weight) implements Comparable<WeightedEdge<V>> {
+        public boolean equals(Object otherObject) {
+            return otherObject instanceof WeightedEdge<?> other 
+                    && (from.equals(other.from) && to.equals(other.to) 
+                            || from.equals(other.to) && to.equals(other.from));
+        }
+        public Set<V> toSet() { return Set.of(from, to); }
+        public int compareTo(WeightedEdge<V> other) {
+            return Long.compare(weight, other.weight);
+        }
+    }
+    
+    static class UnionFind<V> {
+        private Map<V, Node<V>> nodes = new HashMap<>();
+        private static class Node<V> {
+            Node<V> parent;
+            int rank;
+        }
+
+        /**
+         * Adds a singleton set holding the given element if it is not already present in one of the sets. 
+         * @param element the element to add
+         * @return true if a new singleton set was created, false if the element was already present
+         */
+        public boolean singleton(V element) {
+            if (nodes.containsKey(element)) return false;
+            var node = new Node<V>(); 
+            nodes.put(element, node);
+            return true;
+        }
+        
+        /**
+         * Unites the sets containing the given elements.
+         * @param e an element in one of the sets
+         * @param f another element in one of the sets
+         * @return true if e and f belonged to different sets which have been united,
+         * false if e and f already belonged to the same set
+         */
+        public boolean unite(V e, V f) {
+            if (!nodes.containsKey(e) || !nodes.containsKey(f)) throw new NoSuchElementException();
+            return union(find(nodes.get(e)), find(nodes.get(f)));
+        }
+        
+        /**
+         * The disjoint sets that result from the singleton and unite operations.
+         * @return a collection of the sets
+         */
+        public Collection<Set<V>> sets() {
+            var rootSets = new HashMap<Node<V>, Set<V>>();
+            for (var entry : nodes.entrySet()) {
+                var root = find(entry.getValue());
+                rootSets.computeIfAbsent(root, _ -> new HashSet<>()).add(entry.getKey());
+            }
+            return rootSets.values();
+        }
+        
+        private Node<V> find(Node<V> node) {
+            if (node.parent == null) return node;
+            var parentNode = find(node.parent);
+            node.parent = parentNode;
+            return parentNode;
+        }
+        
+        private boolean union(Node<V> first, Node<V> second) {
+            var firstRoot = find(first);
+            var secondRoot = find(second);
+            if (firstRoot == secondRoot) return false;
+            if (firstRoot.rank < secondRoot.rank) {
+                firstRoot.parent = secondRoot;
+            } else {
+                secondRoot.parent = firstRoot;
+                if (firstRoot.rank == secondRoot.rank) firstRoot.rank++;
+            }
+            return true; 
+        }        
+    }
+    
+    /**
+     * Computes the minimum spanning tree using Kruskal's algorithm.
+     * @param <V>
+     * @param vertices the vertices of the graph
+     * @param edges a priority queue of the weighted edges, by increasing weight. This queue 
+     * WILL BE EMPTIED!
+     * @return the minimum spanning tree, sorted by increasing weight
+     */
+    public static <V> SortedSet<WeightedEdge<V>> kruskal(Collection<V> vertices, PriorityQueue<WeightedEdge<V>> edges) {
+        var result = new TreeSet<WeightedEdge<V>>();
+        var uf = new UnionFind<V>();
+        for (var v : vertices) uf.singleton(v);
+        while (!edges.isEmpty()) {
+            var e = edges.remove();
+            if (uf.unite(e.from(), e.to())) {
+                result.add(e);
+            }
+        }
+        return result;
     }
 
     /**
