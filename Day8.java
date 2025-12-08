@@ -1,6 +1,5 @@
-import static com.horstmann.adventofcode.Util.*;
-
 import com.horstmann.adventofcode.*;
+import static com.horstmann.adventofcode.Util.*;
 
 record Point3(int x, int y, int z) {
     long distanceSquared(Point3 other) {
@@ -16,45 +15,27 @@ record Point3(int x, int y, int z) {
 }
 
 List<Point3> points;
-Map<Point3, Set<Point3>> connections;
 int iterations;
 
 void parse(Path path) throws IOException {
     points = Files.lines(path).map(Point3::parse).toList();
-    connections = new HashMap<>();
-    for (var p : points) connections.put(p, new HashSet<>());
 }
 
-List<Point3> closest() {
-    long minDist = Long.MAX_VALUE;
-    List<Point3> shortestPair = null;
+Object part1() {
+    Map<Point3, Set<Point3>> connections = new HashMap<>();
+    for (var p : points) connections.put(p, new HashSet<>());
+    var pq = new PriorityQueue<Graphs.WeightedEdge<Point3>>();
     for (int i = 0; i < points.size(); i++) {
         for (int j = i + 1; j < points.size(); j++) {
             var p = points.get(i);
             var q = points.get(j);
-            if (!connections.get(p).contains(q)) {
-                long dist = p.distanceSquared(q);
-                if (dist < minDist) {
-                    shortestPair = List.of(p, q);
-                    minDist = dist;
-                }
-            }
+            pq.add(new Graphs.WeightedEdge<Point3>(p, q, p.distanceSquared(q)));
         }
     }
-    return shortestPair;
-}
-
-List<Point3> connect() {
-    var cl = closest();
-    connections.get(cl.get(0)).add(cl.get(1));
-    connections.get(cl.get(1)).add(cl.get(0));
-    return cl;
-}
-
-Object part1() {
-    // This is slow for part 2, and I could speed it up with union-find, but it's not *that* slow
     for (int i = 0; i < iterations; i++) {
-        connect();
+        var e = pq.remove();
+        connections.get(e.from()).add(e.to());
+        connections.get(e.to()).add(e.from());
     }
     var circuits = Graphs.connectedComponents(points, p -> connections.get(p));
     var circuitsSorted = new TreeSet<Set<Point3>>(Comparator.comparingInt(Set::size));
