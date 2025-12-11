@@ -71,6 +71,7 @@ public class Graphs {
      * @return a path that starts with the root of the search and ends at the given vertex
      */
     public static <V> List<V> path(Map<V, V> predecessors, V end) {
+        // TODO: Make method in a class for BFS/DFS?
         var p = new ArrayList<V>();
         p.add(end);
         var pred = predecessors.get(end); 
@@ -89,6 +90,7 @@ public class Graphs {
      * @return a set of all maximum length paths      
      */
     public static <V> Set<List<V>> dagPaths(V root, Function<V, Set<V>> neighbors) {
+        // TODO: memoize
         var ns = neighbors.apply(root);
         if (ns.isEmpty()) return Set.of(List.of(root));
         var result = new HashSet<List<V>>();
@@ -98,8 +100,28 @@ public class Graphs {
        }   
        return result;
    }
-
     
+    /**
+     * All paths from the root of a DAG
+     * @param <V> The type of the graph's vertices
+     * @param root the starting node
+     * @param neighbors yields the set of neighbors for any vertex 
+     * @return a set of all maximum length paths      
+     */
+    public static <V> long dagPathCount(V start, V end, Function<V, Set<V>> neighbors) {
+        var topoSort = topologicalSort(start, neighbors);
+        int istart = topoSort.indexOf(start);
+        int iend = topoSort.indexOf(end);
+        var counts = new HashMap<V, Long>();
+        counts.put(end, 1L);
+        for (int i = iend - 1; i >= istart; i--) {
+            V v = topoSort.get(i); 
+            for (V n : neighbors.apply(v))
+                counts.put(v, counts.getOrDefault(v, 0L) + counts.getOrDefault(n, 0L));            
+        }
+        return counts.getOrDefault(start, 0L);
+   }
+        
     /**
      * Depth first search
      * @param <V> The type of the graph's vertices
@@ -154,11 +176,11 @@ public class Graphs {
     }
     
     /**
-     * Topological sort of a directed graph.
+     * Topological sort of a directed acyclic graph.
      * @param <V> The type of the graph's vertices
      * @param root the starting node for the sort
      * @param neighbors yields the set of neighbors for any vertex
-     * @return a list of nodes so that for i < j, there is a path from the ith element to the jth      
+     * @return a list of nodes so that for every directed edge u → v, u comes before v      
      */
     public static <V> List<V> topologicalSort(V root, Function<V, Set<V>> neighbors) {
         var sorted = new ArrayList<V>();
@@ -177,6 +199,7 @@ public class Graphs {
     public static <V> Set<List<V>> simplePaths(V from, V to, Function<V, Set<V>> neighbors) {
         return simplePaths(from, to, neighbors, _ -> false);
     }   
+    
     /**
      * Gets simple paths (without cycles) between two vertices, pruning fruitless searches  
      * @param <V> The type of the graph's vertices
@@ -464,13 +487,13 @@ public class Graphs {
     public static <V> String dot(V root, Function<V, Set<V>> neighbors, BiFunction<V, V, Object> edgeLabels) {
         var builder = new StringBuilder();
         builder.append("digraph {\n");
-        for (var entry : dfs(root, neighbors).entrySet()) {
-            var to = entry.getKey();
-            var from = entry.getValue();
-            var label = edgeLabels.apply(from, to);
-            builder.append("   \"%s\" -> \"%s\"".formatted(from, to));
-            if (label != null) builder.append("[label=\"%s\"]".formatted(label));
-            builder.append("\n");
+        for (var from: dfs(root, neighbors).keySet()) {
+            for (var to: neighbors.apply(from)) {
+                var label = edgeLabels.apply(from, to);
+                builder.append("   \"%s\" -> \"%s\"".formatted(from, to));
+                if (label != null) builder.append("[label=\"%s\"]".formatted(label));
+                builder.append("\n");
+            }
         }  
         builder.append("}\n");
         return builder.toString();
