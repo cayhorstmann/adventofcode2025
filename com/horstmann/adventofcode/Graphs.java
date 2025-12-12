@@ -102,11 +102,12 @@ public class Graphs {
    }
     
     /**
-     * All paths from the root of a DAG
+     * Counts all paths between two vertices of a DAG
      * @param <V> The type of the graph's vertices
-     * @param root the starting node
+     * @param start the starting node
+     * @param end the ending node
      * @param neighbors yields the set of neighbors for any vertex 
-     * @return a set of all maximum length paths      
+     * @return the number of paths from start to end      
      */
     public static <V> long dagPathCount(V start, V end, Function<V, Set<V>> neighbors) {
         var topoSort = topologicalSort(start, neighbors);
